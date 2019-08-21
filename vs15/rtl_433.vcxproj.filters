@@ -301,7 +301,13 @@
     <ClCompile Include="..\src\devices\gt_wt_02.c">
       <Filter>Source Files\devices</Filter>
     </ClCompile>
+    <ClCompile Include="..\src\devices\hcs200.c">
+      <Filter>Source Files\devices</Filter>
+    </ClCompile>
     <ClCompile Include="..\src\devices\hideki.c">
+      <Filter>Source Files\devices</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\devices\holman_ws5029.c">
       <Filter>Source Files\devices</Filter>
     </ClCompile>
     <ClCompile Include="..\src\devices\hondaremote.c">
@@ -400,7 +406,10 @@
     <ClCompile Include="..\src\devices\oregon_scientific_v1.c">
       <Filter>Source Files\devices</Filter>
     </ClCompile>
-    <ClCompile Include="..\src\devices\philips.c">
+    <ClCompile Include="..\src\devices\philips_aj3650.c">
+      <Filter>Source Files\devices</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\devices\philips_aj7010.c">
       <Filter>Source Files\devices</Filter>
     </ClCompile>
     <ClCompile Include="..\src\devices\prologue.c">
@@ -419,6 +428,9 @@
       <Filter>Source Files\devices</Filter>
     </ClCompile>
     <ClCompile Include="..\src\devices\rubicson.c">
+      <Filter>Source Files\devices</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\devices\rubicson_48659.c">
       <Filter>Source Files\devices</Filter>
     </ClCompile>
     <ClCompile Include="..\src\devices\s3318p.c">
@@ -443,6 +455,9 @@
       <Filter>Source Files\devices</Filter>
     </ClCompile>
     <ClCompile Include="..\src\devices\steelmate.c">
+      <Filter>Source Files\devices</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\devices\tfa_30_3196.c">
       <Filter>Source Files\devices</Filter>
     </ClCompile>
     <ClCompile Include="..\src\devices\tfa_pool_thermometer.c">

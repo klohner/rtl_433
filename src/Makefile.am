@@ -68,7 +68,9 @@ rtl_433_SOURCES      = abuf.c \
                        devices/generic_remote.c \
                        devices/generic_temperature_sensor.c \
                        devices/gt_wt_02.c \
+                       devices/hcs200.c \
                        devices/hideki.c \
+                       devices/holman_ws5029.c \
                        devices/hondaremote.c \
                        devices/honeywell.c \
                        devices/honeywell_wdb.c \
@@ -101,13 +103,15 @@ rtl_433_SOURCES      = abuf.c \
                        devices/oregon_scientific.c \
                        devices/oregon_scientific_sl109h.c \
                        devices/oregon_scientific_v1.c \
-                       devices/philips.c \
+                       devices/philips_aj3650.c \
+                       devices/philips_aj7010.c \
                        devices/prologue.c \
                        devices/proove.c \
                        devices/quhwa.c \
                        devices/radiohead_ask.c \
                        devices/rftech.c \
                        devices/rubicson.c \
+                       devices/rubicson_48659.c \
                        devices/s3318p.c \
                        devices/schraeder.c \
                        devices/silvercrest.c \
@@ -116,6 +120,7 @@ rtl_433_SOURCES      = abuf.c \
                        devices/solight_te44.c \
                        devices/springfield.c \
                        devices/steelmate.c \
+                       devices/tfa_30_3196.c \
                        devices/tfa_pool_thermometer.c \
                        devices/tfa_twin_plus_30.3049.c \
                        devices/thermopro_tp11.c \

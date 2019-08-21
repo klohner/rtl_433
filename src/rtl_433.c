@@ -92,7 +92,7 @@ static void usage(int exit_code)
             "  [-R <device> | help] Enable only the specified device decoding protocol (can be used multiple times)\n"
             "       Specify a negative number to disable a device decoding protocol (can be used multiple times)\n"
             "  [-G] Enable blacklisted device decoding protocols, for testing only.\n"
-            "  [-X <spec> | help] Add a general purpose decoder (-R 0 to disable all other decoders)\n"
+            "  [-X <spec> | help] Add a general purpose decoder (prepend -R 0 to disable all decoders)\n"
             "  [-l <level>] Change detection level used to determine pulses [0-16384] (0 = auto) (default: %i)\n"
             "  [-z <value>] Override short value in data decoder\n"
             "  [-x <value>] Override long value in data decoder\n"
@@ -411,11 +411,6 @@ static void sdr_callback(unsigned char *iq_buf, uint32_t len, void *ctx)
                 break;
             }
         }
-
-        if (cfg->stop_after_successful_events_flag && (d_events > 0)) {
-            cfg->do_exit = cfg->do_exit_async = 1;
-            sdr_stop(cfg->dev);
-        }
     }
 
     if (demod->am_analyze) {
@@ -526,10 +521,21 @@ static void sdr_callback(unsigned char *iq_buf, uint32_t len, void *ctx)
     if (cfg->bytes_to_read > 0)
         cfg->bytes_to_read -= len;
 
+    if (cfg->after_successful_events_flag && (d_events > 0)) {
+        if (cfg->after_successful_events_flag == 1) {
+            cfg->do_exit = 1;
+        }
+        cfg->do_exit_async = 1;
+#ifndef _WIN32
+        alarm(0); // cancel the watchdog timer
+#endif
+        sdr_stop(cfg->dev);
+    }
+
     time_t rawtime;
     time(&rawtime);
-    if (cfg->frequencies > 1 && difftime(rawtime, cfg->rawtime_old) > demod->hop_time) {
-        cfg->rawtime_old = rawtime;
+    int hop_index = cfg->hop_times > cfg->frequency_index ? cfg->frequency_index : cfg->hop_times - 1;
+    if (cfg->frequencies > 1 && difftime(rawtime, cfg->hop_start_time) > cfg->hop_time[hop_index]) {
         cfg->do_exit_async = 1;
 #ifndef _WIN32
         alarm(0); // cancel the watchdog timer
@@ -545,7 +551,7 @@ static void sdr_callback(unsigned char *iq_buf, uint32_t len, void *ctx)
         fprintf(stderr, "Time expired, exiting!\n");
     }
     if (cfg->stats_now || (cfg->report_stats && cfg->stats_interval && rawtime >= cfg->stats_time)) {
-        event_occured_handler(cfg, create_report_data(cfg, cfg->stats_now ? 3 : cfg->report_stats));
+        event_occurred_handler(cfg, create_report_data(cfg, cfg->stats_now ? 3 : cfg->report_stats));
         flush_report_data(cfg);
         if (rawtime >= cfg->stats_time)
             cfg->stats_time += cfg->stats_interval;
@@ -568,7 +574,7 @@ static int hasopt(int test, int argc, char *argv[], char const *optstring)
 
 static void parse_conf_option(r_cfg_t *cfg, int opt, char *arg);
 
-#define OPTSTRING "hVvqDc:x:z:p:aAI:S:m:M:r:w:W:l:d:t:f:H:g:s:b:n:R:X:F:K:C:T:UGy:E"
+#define OPTSTRING "hVvqDc:x:z:p:aAI:S:m:M:r:w:W:l:d:t:f:H:g:s:b:n:R:X:F:K:C:T:UGy:E:"
 
 // these should match the short options exactly
 static struct conf_keywords const conf_keywords[] = {
@@ -658,7 +664,6 @@ static void parse_conf_args(r_cfg_t *cfg, int argc, char *argv[])
 
 static void parse_conf_option(r_cfg_t *cfg, int opt, char *arg)
 {
-    unsigned i;
     int n;
     r_device *flex_device;
 
@@ -703,7 +708,10 @@ static void parse_conf_option(r_cfg_t *cfg, int opt, char *arg)
             fprintf(stderr, "Max number of frequencies reached %d\n", MAX_FREQS);
         break;
     case 'H':
-        cfg->demod->hop_time = atoi_time(arg, "-H: ");
+        if (cfg->hop_times < MAX_FREQS)
+            cfg->hop_time[cfg->hop_times++] = atoi_time(arg, "-H: ");
+        else
+            fprintf(stderr, "Max number of hop times reached %d\n", MAX_FREQS);
         break;
     case 'g':
         if (!arg)
@@ -971,7 +979,15 @@ static void parse_conf_option(r_cfg_t *cfg, int opt, char *arg)
         cfg->test_data = arg;
         break;
     case 'E':
-        cfg->stop_after_successful_events_flag = atobv(arg, 1);
+        if (arg && !strcmp(arg, "hop")) {
+            cfg->after_successful_events_flag = 2;
+        }
+        else if (arg && !strcmp(arg, "quit")) {
+            cfg->after_successful_events_flag = 1;
+        }
+        else {
+            cfg->after_successful_events_flag = atobv(arg, 1);
+        }
         break;
     default:
         usage(1);
@@ -996,6 +1012,12 @@ sighandler(int signum)
         sdr_stop(cfg.dev);
         return TRUE;
     }
+    else if (CTRL_BREAK_EVENT == signum) {
+        fprintf(stderr, "CTRL-BREAK detected, hopping to next frequency (-f). Use CTRL-C to quit.\n");
+        cfg.do_exit_async = 1;
+        sdr_stop(cfg.dev);
+        return TRUE;
+    }
     return FALSE;
 }
 #else
@@ -1006,6 +1028,11 @@ static void sighandler(int signum)
     }
     else if (signum == SIGINFO/* TODO: maybe SIGUSR1 */) {
         cfg.stats_now++;
+        return;
+    }
+    else if (signum == SIGUSR1) {
+        cfg.do_exit_async = 1;
+        sdr_stop(cfg.dev);
         return;
     }
     else if (signum == SIGALRM) {
@@ -1304,6 +1331,7 @@ int main(int argc, char **argv) {
     sigaction(SIGTERM, &sigact, NULL);
     sigaction(SIGQUIT, &sigact, NULL);
     sigaction(SIGPIPE, &sigact, NULL);
+    sigaction(SIGUSR1, &sigact, NULL);
     sigaction(SIGINFO, &sigact, NULL);
 #else
     SetConsoleCtrlHandler((PHANDLER_ROUTINE)sighandler, TRUE);
@@ -1331,8 +1359,9 @@ int main(int argc, char **argv) {
     if (cfg.frequencies == 0) {
         cfg.frequency[0] = DEFAULT_FREQUENCY;
         cfg.frequencies = 1;
-    } else {
-        time(&cfg.rawtime_old);
+    }
+    if (cfg.frequencies > 1 && cfg.hop_times == 0) {
+        cfg.hop_time[cfg.hop_times++] = DEFAULT_HOP_TIME;
     }
     if (cfg.verbosity) {
         fprintf(stderr, "Reading samples in async mode...\n");
@@ -1344,6 +1373,8 @@ int main(int argc, char **argv) {
 
     uint32_t samp_rate = cfg.samp_rate;
     while (!cfg.do_exit) {
+        time(&cfg.hop_start_time);
+
         /* Set the cfg.frequency */
         cfg.center_frequency = cfg.frequency[cfg.frequency_index];
         r = sdr_set_center_freq(cfg.dev, cfg.center_frequency, 1); // always verbose
@@ -1372,7 +1403,7 @@ int main(int argc, char **argv) {
     }
 
     if (cfg.report_stats > 0) {
-        event_occured_handler(&cfg, create_report_data(&cfg, cfg.report_stats));
+        event_occurred_handler(&cfg, create_report_data(&cfg, cfg.report_stats));
         flush_report_data(&cfg);
     }
 

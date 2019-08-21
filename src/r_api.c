@@ -87,7 +87,6 @@ void r_init_cfg(r_cfg_t *cfg)
     }
 
     cfg->demod->level_limit = DEFAULT_LEVEL_LIMIT;
-    cfg->demod->hop_time    = DEFAULT_HOP_TIME;
 
     list_ensure_size(&cfg->demod->r_devs, 100);
     list_ensure_size(&cfg->demod->dumper, 32);
@@ -416,7 +415,7 @@ int run_fsk_demods(list_t *r_devs, pulse_data_t *fsk_pulse_data)
 /* handlers */
 
 /** Pass the data structure to all output handlers. Frees data afterwards. */
-void event_occured_handler(r_cfg_t *cfg, data_t *data)
+void event_occurred_handler(r_cfg_t *cfg, data_t *data)
 {
     // prepend "time" if requested
     if (cfg->report_time != REPORT_TIME_OFF) {
